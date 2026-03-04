@@ -4,7 +4,7 @@ require_once '../connectpdo.php';
 
 // Falls nicht eingeloggt, zurück zur index
 if (!isset($_SESSION['user_id'])) {
-    header("Location: /prj-TicketHub/auth/loginpdo.php");
+    header("Location: ../auth/loginpdo.php");
     exit();
 }
 
