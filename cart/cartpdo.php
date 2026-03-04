@@ -2,7 +2,6 @@
 session_start();
 require_once '../connectpdo.php';
 
-// Falls nicht eingeloggt, zurück zur index
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../auth/loginpdo.php");
     exit();
@@ -10,39 +9,40 @@ if (!isset($_SESSION['user_id'])) {
 
 $message = "";
 
-// Bestellung abschliessen
+// Bestellung abschließen
 if (isset($_POST['checkout']) && !empty($_SESSION['cart'])) {
     try {
         $pdo->beginTransaction();
 
-        // 1. Gesamtsumme berechnen
         $total = 0;
         foreach ($_SESSION['cart'] as $item) {
-            $total += $item['price'] * $item['qty'];
+            $total += $item['price'];
         }
 
-        // 2. Eintrag in tblbestellung erstellen
+        // 1. Bestellung anlegen
         $sqlBestellung = "INSERT INTO tblbestellung (fkUser, fldGesamtbetrag, fldStatus) VALUES (?, ?, 'Bezahlt')";
         $stmtB = $pdo->prepare($sqlBestellung);
         $stmtB->execute([$_SESSION['user_id'], $total]);
         $bestellID = $pdo->lastInsertId();
 
-        // 3. Pro Ticket einen Eintrag in tblticket erstellen
-        $sqlTicket = "INSERT INTO tblticket (fkBestellung, fkUser, fkEvent, fldEndpreis) VALUES (?, ?, ?, ?)";
+        // 2. Tickets anlegen und Sitze sperren
+        $sqlTicket = "INSERT INTO tblticket (fkBestellung, fkUser, fkEvent, fkSeat, fldEndpreis) VALUES (?, ?, ?, ?, ?)";
         $stmtT = $pdo->prepare($sqlTicket);
+        
+        $sqlUpdateSeat = "UPDATE tblseat SET fldStatus = 'besetzt' WHERE pkSeat = ?";
+        $stmtU = $pdo->prepare($sqlUpdateSeat);
 
-        foreach ($_SESSION['cart'] as $eventId => $item) {
-            for ($i = 0; $i < $item['qty']; $i++) {
-                $stmtT->execute([$bestellID, $_SESSION['user_id'], $eventId, $item['price']]);
-            }
+        foreach ($_SESSION['cart'] as $item) {
+            $stmtT->execute([$bestellID, $_SESSION['user_id'], $item['event_id'], $item['seat_id'], $item['price']]);
+            $stmtU->execute([$item['seat_id']]);
         }
 
         $pdo->commit();
         $_SESSION['cart'] = []; // Warenkorb leeren
-        $message = "Vielen Dank! Deine Bestellung wurde erfolgreich abgeschlossen.";
+        $message = "Bestellung erfolgreich abgeschlossen!";
     } catch (Exception $e) {
         $pdo->rollBack();
-        $message = "Fehler bei der Bestellung: " . $e->getMessage();
+        $message = "Fehler: " . $e->getMessage();
     }
 }
 ?>
@@ -58,7 +58,7 @@ if (isset($_POST['checkout']) && !empty($_SESSION['cart'])) {
         table { width: 100%; border-collapse: collapse; margin: 20px 0; }
         th, td { padding: 12px; border-bottom: 1px solid #ddd; text-align: left; }
         .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; color: white; display: inline-block; }
-        .btn-order { background: #28a745; font-size: 1.1em; }
+        .btn-order { background: #28a745; }
         .btn-back { background: #6c757d; }
     </style>
 </head>
@@ -69,36 +69,34 @@ if (isset($_POST['checkout']) && !empty($_SESSION['cart'])) {
     
     <?php if ($message): ?>
         <p style="color: green; font-weight: bold;"><?= $message ?></p>
-        <a href="../index.php" class="btn btn-back">Zurück zu den Events</a>
+        <a href="../index.php" class="btn btn-back">Zurück zur Übersicht</a>
     <?php elseif (empty($_SESSION['cart'])): ?>
         <p>Dein Warenkorb ist leer.</p>
-        <a href="../index.php" class="btn btn-back">Jetzt Tickets finden</a>
+        <a href="../index.php" class="btn btn-back">Events ansehen</a>
     <?php else: ?>
         <table>
             <thead>
                 <tr>
-                    <th>Event</th>
-                    <th>Anzahl</th>
-                    <th>Preis pro Ticket</th>
-                    <th>Total</th>
+                    <th>Event & Sitzplatz</th>
+                    <th>Preis</th>
                 </tr>
             </thead>
             <tbody>
                 <?php 
                 $grandTotal = 0;
-                foreach ($_SESSION['cart'] as $id => $item): 
-                    $subtotal = $item['price'] * $item['qty'];
-                    $grandTotal += $subtotal;
+                foreach ($_SESSION['cart'] as $item): 
+                    $grandTotal += $item['price'];
                 ?>
                 <tr>
-                    <td><?= htmlspecialchars($item['name']) ?></td>
-                    <td><?= $item['qty'] ?>x</td>
+                    <td>
+                        <strong><?= htmlspecialchars($item['event_name']) ?></strong><br>
+                        <small>Reihe <?= htmlspecialchars($item['reihe']) ?>, Platz <?= htmlspecialchars($item['platz']) ?></small>
+                    </td>
                     <td>CHF <?= number_format($item['price'], 2) ?></td>
-                    <td>CHF <?= number_format($subtotal, 2) ?></td>
                 </tr>
                 <?php endforeach; ?>
                 <tr style="font-weight: bold; background: #eee;">
-                    <td colspan="3">Gesamtbetrag</td>
+                    <td>Gesamtbetrag</td>
                     <td>CHF <?= number_format($grandTotal, 2) ?></td>
                 </tr>
             </tbody>
