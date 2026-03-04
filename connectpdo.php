@@ -2,7 +2,11 @@
 
 $servername= 'localhost:3306';
 $username='root';
+<<<<<<< HEAD
 $passwort='121007';
+=======
+$passwort='CbiN1iCb1..1';
+>>>>>>> e75057534ced04282ffc6d3fbc4b41b30d3b4229
 $db='TicketHub';
 
 try{
