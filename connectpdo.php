@@ -2,8 +2,8 @@
 
 $servername= 'localhost:3306';
 $username='root';
-$passwort='Passwort123.';
-$db='stu141';
+$passwort='121007';
+$db='TicketHub';
 
 try{
     $conn = new pdo ("mysql:host=$servername;dbname=$db",$username,$passwort);
