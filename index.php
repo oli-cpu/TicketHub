@@ -1,39 +1,52 @@
 <?php
 include("connectpdo.php");
 
-// SQL auf Ticket-System (tblevent) angepasst
-$sql = "SELECT pkEvent AS pkArtikelID, EventName AS fldArtikelname, BasisPreis AS fldPreis 
-        FROM tblevent 
-        ORDER BY BasisPreis DESC";
+// SQL exakt nach deinem Modell: fld-Präfixe hinzugefügt
+$sql = "SELECT pkEvent, fldEventName, fldBasisPreis FROM tblevent ORDER BY fldEventDatum ASC";
 
-$stmt = $pdo->query($sql);
+try {
+    $stmt = $pdo->query($sql);
+} catch (PDOException $e) {
+    die("Datenbankfehler: " . $e->getMessage());
+}
 ?>
 <!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>TicketHub Übersicht</title>
+    <title>TicketHub - Startseite</title>
+    <style>
+        .nav { background: #333; padding: 10px; color: white; }
+        .login-btn { color: white; border: 1px solid white; padding: 5px 10px; text-decoration: none; float: right; }
+    </style>
 </head>
 <body>
-    <h1>TicketHub Startseite</h1>
-    <div>
-        <a href="admin/add_event.php">+ Neues Event</a>
-        <a href="auth/loginpdo.php">Login</a>
-    </div>
-    <table border="1">
-        <thead>
-            <tr><th>ID</th><th>Event</th><th>Preis</th><th>Aktion</th></tr>
-        </thead>
-        <tbody>
-        <?php while ($row = $stmt->fetch(PDO::FETCH_ASSOC)): ?>
-            <tr>
-                <td><?= htmlspecialchars($row['pkArtikelID']) ?></td>
-                <td><?= htmlspecialchars($row['fldArtikelname']) ?></td>
-                <td>CHF <?= htmlspecialchars($row['fldPreis']) ?></td>
-                <td><a href='edit.php?pk=<?= $row['pkArtikelID'] ?>'>✏</a></td>
-            </tr>
-        <?php endwhile; ?>
-        </tbody>
-    </table>
+
+<div class="nav">
+    <span>TicketHub</span>
+    <a href="auth/loginpdo.php" class="login-btn">Login</a>
+</div>
+
+<h1>Aktuelle Events</h1>
+
+<table border="1" width="100%">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Event</th>
+            <th>Preis</th>
+        </tr>
+    </thead>
+    <tbody>
+    <?php while ($row = $stmt->fetch(PDO::FETCH_ASSOC)): ?>
+        <tr>
+            <td><?= htmlspecialchars($row['pkEvent']) ?></td>
+            <td><?= htmlspecialchars($row['fldEventName']) ?></td>
+            <td>CHF <?= htmlspecialchars($row['fldBasisPreis']) ?></td>
+        </tr>
+    <?php endwhile; ?>
+    </tbody>
+</table>
+
 </body>
 </html>
