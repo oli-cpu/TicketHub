@@ -69,10 +69,10 @@ if (isset($_POST['checkout']) && !empty($_SESSION['cart'])) {
     
     <?php if ($message): ?>
         <p style="color: green; font-weight: bold;"><?= $message ?></p>
-        <a href="/prj-TicketHub/index.php" class="btn btn-back">Zurück zu den Events</a>
+        <a href="../index.php" class="btn btn-back">Zurück zu den Events</a>
     <?php elseif (empty($_SESSION['cart'])): ?>
         <p>Dein Warenkorb ist leer.</p>
-        <a href="/prj-TicketHub/index.php" class="btn btn-back">Jetzt Tickets finden</a>
+        <a href="../index.php" class="btn btn-back">Jetzt Tickets finden</a>
     <?php else: ?>
         <table>
             <thead>
@@ -105,7 +105,7 @@ if (isset($_POST['checkout']) && !empty($_SESSION['cart'])) {
         </table>
 
         <form method="POST">
-            <a href="/prj-TicketHub/index.php" class="btn btn-back">Weiter einkaufen</a>
+            <a href="../index.php" class="btn btn-back">Weiter einkaufen</a>
             <button type="submit" name="checkout" class="btn btn-order">Kostenpflichtig bestellen</button>
         </form>
     <?php endif; ?>

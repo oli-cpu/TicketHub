@@ -40,7 +40,7 @@ try {
     <div class="nav">
         <a href="add_event.php"><strong>+ Neues Event anlegen</strong></a> | 
         <a href="../index.php">Zur Startseite</a> | 
-        <a href="../auth/logout.php" style="color:red;">Logout</a>
+        <a href="../auth/logoutpdo.php" style="color:red;">Logout</a>
     </div>
 
     <?php if (empty($stats)): ?>
