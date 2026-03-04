@@ -11,8 +11,7 @@ FROM
     stu141.tblArtikel
 ORDER BY fldPreis DESC";
 
-$stmt = $conn->query($sql);
-
+$stmt = $conn->prepare($sql);
 #HTML
 ?>
 
