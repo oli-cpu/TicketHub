@@ -10,19 +10,31 @@ if (!isset($_SESSION['user_id'])) {
 $event_id = $_GET['event_id'] ?? null;
 if (!$event_id) { die("Kein Event ausgewählt."); }
 
+// 1. Event-Details laden
 $stmtEvent = $pdo->prepare("SELECT fldEventName, fldBasisPreis FROM tblevent WHERE pkEvent = ?");
 $stmtEvent->execute([$event_id]);
 $event = $stmtEvent->fetch(PDO::FETCH_ASSOC);
 
-$stmtSeats = $pdo->prepare("SELECT pkSeat, fldReihe, fldSeatNumber, fldStatus FROM tblseat WHERE fkEvent = ? ORDER BY fldReihe, fldSeatNumber");
+// 2. Sitzplätze NUMERISCH sortiert laden
+// Der Trick "(fldReihe + 0)" wandelt den Text in der Datenbank für die Sortierung in eine Zahl um
+$sqlSeats = "SELECT pkSeat, fldReihe, fldSeatNumber, fldStatus 
+             FROM tblseat 
+             WHERE fkEvent = ? 
+             ORDER BY (fldReihe + 0) ASC, (fldSeatNumber + 0) ASC";
+$stmtSeats = $pdo->prepare($sqlSeats);
 $stmtSeats->execute([$event_id]);
 $all_seats = $stmtSeats->fetchAll(PDO::FETCH_ASSOC);
 
+// Gruppierung nach Reihen für das Grid
 $rows = [];
 foreach ($all_seats as $seat) {
     $rows[$seat['fldReihe']][] = $seat;
 }
 
+// PHP-Array-Sortierung: Sicherstellen, dass die Keys (Reihennummern) numerisch aufsteigend sind
+ksort($rows, SORT_NUMERIC);
+
+// Warenkorb-Logik
 if (isset($_POST['confirm_selection']) && !empty($_POST['seat_ids'])) {
     $selected_ids = explode(',', $_POST['seat_ids']);
     foreach ($selected_ids as $seat_id) {
@@ -53,7 +65,6 @@ if (isset($_POST['confirm_selection']) && !empty($_POST['seat_ids'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sitzplatz wählen - TicketHub</title>
     <style>
-        /* Globaler Dark Look */
         body { 
             font-family: Arial, sans-serif; 
             background: #000000; 
@@ -63,8 +74,8 @@ if (isset($_POST['confirm_selection']) && !empty($_POST['seat_ids'])) {
             text-align: center; 
         }
 
-        h1 { font-size: 1.8rem; margin-bottom: 30px; letter-spacing: -1px; }
-        h1 span { color: #ff9900; }
+        .brand-header { font-size: 2rem; font-weight: bold; margin-bottom: 20px; }
+        .brand-header span { background: #ff9900; color: #000; padding: 2px 8px; border-radius: 4px; }
 
         /* Bühne im Kino-Look */
         .stage { 
@@ -80,16 +91,18 @@ if (isset($_POST['confirm_selection']) && !empty($_POST['seat_ids'])) {
             border-bottom: 3px solid #ff9900;
         }
 
-        /* Sitzplan Layout */
+        /* Das Grid fixieren */
         .seating-plan { 
-            display: flex; 
+            display: inline-flex; 
             flex-direction: column; 
             gap: 12px; 
-            align-items: center; 
-            margin-bottom: 100px; 
+            background: #121212;
+            padding: 40px;
+            border-radius: 15px;
+            border: 1px solid #222;
         }
 
-        .row { display: flex; gap: 8px; align-items: center; }
+        .row { display: flex; gap: 8px; align-items: center; justify-content: center; }
 
         .row-label { 
             width: 80px; 
@@ -98,12 +111,15 @@ if (isset($_POST['confirm_selection']) && !empty($_POST['seat_ids'])) {
             text-align: right; 
             margin-right: 15px; 
             text-transform: uppercase;
+            font-weight: bold;
         }
 
-        /* Die Sitze */
+        /* Sitzplatz Styling */
         .seat {
-            width: 32px; 
-            height: 32px; 
+            width: 34px; 
+            height: 34px; 
+            background: #282828; 
+            border: 1px solid #333; 
             border-radius: 4px; 
             display: flex; 
             align-items: center; 
@@ -111,13 +127,10 @@ if (isset($_POST['confirm_selection']) && !empty($_POST['seat_ids'])) {
             font-size: 10px;
             font-weight: bold;
             cursor: pointer; 
-            transition: all 0.2s ease; 
-            background: #282828;
+            transition: 0.2s ease; 
             color: #fff;
-            border: 1px solid #333;
         }
 
-        /* Status-Farben */
         .seat.frei:hover { 
             background: #444; 
             border-color: #ff9900; 
@@ -125,8 +138,8 @@ if (isset($_POST['confirm_selection']) && !empty($_POST['seat_ids'])) {
         }
 
         .seat.besetzt { 
-            background: #121212; 
-            color: #444; 
+            background: #0a0a0a; 
+            color: #333; 
             cursor: not-allowed; 
             border: 1px solid #1a1a1a; 
         }
@@ -135,63 +148,30 @@ if (isset($_POST['confirm_selection']) && !empty($_POST['seat_ids'])) {
             background: #ff9900 !important; 
             color: #000 !important; 
             border-color: #fff;
-            box-shadow: 0 0 15px rgba(255,153,0,0.4);
+            box-shadow: 0 0 15px rgba(255,153,0,0.5);
         }
 
         /* Legende */
-        .legend { 
-            display: flex; 
-            justify-content: center; 
-            gap: 25px; 
-            margin: 30px 0; 
-            font-size: 0.85rem; 
-            color: #888;
-        }
+        .legend { display: flex; justify-content: center; gap: 25px; margin: 30px 0; font-size: 0.85rem; color: #888; }
         .legend-item { display: flex; align-items: center; gap: 8px; }
         .legend .box { width: 16px; height: 16px; border-radius: 3px; }
 
-        /* Checkout Bar unten */
+        /* Checkout Bar */
         .checkout-bar { 
-            position: fixed; 
-            bottom: 0; left: 0; right: 0; 
-            background: #121212; 
-            padding: 20px 40px; 
-            border-top: 1px solid #333;
-            display: none; 
-            justify-content: space-between;
-            align-items: center;
-            z-index: 1000;
+            position: fixed; bottom: 0; left: 0; right: 0; 
+            background: #111; padding: 20px; 
+            border-top: 2px solid #ff9900; 
+            display: none; justify-content: center; align-items: center; gap: 50px;
         }
-
-        .checkout-content { 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            width: 100%; 
-            max-width: 1000px; 
-            margin: 0 auto; 
-            gap: 30px;
-        }
-
-        .price-tag { font-size: 1.2rem; }
-        .price-tag span { color: #ff9900; font-weight: bold; }
-
         .btn-confirm { 
-            background: #ff9900; 
-            color: #000; 
-            padding: 12px 25px; 
-            border: none; 
-            border-radius: 4px; 
-            font-weight: bold; 
-            cursor: pointer; 
-            transition: 0.3s;
+            background: #ff9900; color: #000; padding: 12px 30px; 
+            border: none; border-radius: 5px; font-weight: bold; cursor: pointer; 
         }
-        .btn-confirm:hover { background: #e68a00; transform: scale(1.05); }
-
     </style>
 </head>
 <body>
 
+    <div class="brand-header">Ticket<span>Hub</span></div>
     <h1>Wähle deine Plätze für <span><?= htmlspecialchars($event['fldEventName']) ?></span></h1>
     
     <div class="stage">Bühne / Leinwand</div>
@@ -199,11 +179,10 @@ if (isset($_POST['confirm_selection']) && !empty($_POST['seat_ids'])) {
     <div class="seating-plan">
         <?php foreach ($rows as $reihe => $seats): ?>
             <div class="row">
-                <div class="row-label">R-<?= htmlspecialchars($reihe) ?></div>
+                <div class="row-label">Reihe <?= htmlspecialchars($reihe) ?></div>
                 <?php foreach ($seats as $s): ?>
                     <div class="seat <?= htmlspecialchars($s['fldStatus']) ?>" 
                          data-id="<?= $s['pkSeat'] ?>" 
-                         data-info="R<?= htmlspecialchars($reihe) ?>/P<?= htmlspecialchars($s['fldSeatNumber']) ?>"
                          onclick="toggleSeat(this)">
                         <?= htmlspecialchars($s['fldSeatNumber']) ?>
                     </div>
@@ -214,19 +193,17 @@ if (isset($_POST['confirm_selection']) && !empty($_POST['seat_ids'])) {
 
     <div class="legend">
         <div class="legend-item"><div class="box" style="background: #282828; border: 1px solid #333;"></div> Verfügbar</div>
-        <div class="legend-item"><div class="box" style="background: #121212;"></div> Besetzt</div>
+        <div class="legend-item"><div class="box" style="background: #0a0a0a;"></div> Besetzt</div>
         <div class="legend-item"><div class="box" style="background: #ff9900;"></div> Deine Wahl</div>
     </div>
 
     <div id="checkoutBar" class="checkout-bar">
-        <div class="checkout-content">
-            <div id="selectionInfo" style="color: #888;">0 Plätze ausgewählt</div>
-            <div class="price-tag">Gesamt: <span id="totalPrice">0.00</span> CHF</div>
-            <form method="POST" style="display: inline;">
-                <input type="hidden" name="seat_ids" id="selectedSeatIds">
-                <button type="submit" name="confirm_selection" class="btn-confirm">In den Warenkorb</button>
-            </form>
-        </div>
+        <div id="selectionInfo" style="color: #888; margin-right: 20px;">0 Plätze gewählt</div>
+        <div style="font-size: 1.2rem;">Total: <strong style="color:#ff9900;"><span id="totalPrice">0.00</span> CHF</strong></div>
+        <form method="POST" style="margin-left: 30px;">
+            <input type="hidden" name="seat_ids" id="selectedSeatIds">
+            <button type="submit" name="confirm_selection" class="btn-confirm">In den Warenkorb</button>
+        </form>
     </div>
 
     <script>
@@ -235,7 +212,6 @@ if (isset($_POST['confirm_selection']) && !empty($_POST['seat_ids'])) {
 
         function toggleSeat(element) {
             if (element.classList.contains('besetzt')) return;
-
             const seatId = element.getAttribute('data-id');
 
             if (element.classList.contains('selected')) {
@@ -245,26 +221,16 @@ if (isset($_POST['confirm_selection']) && !empty($_POST['seat_ids'])) {
                 element.classList.add('selected');
                 selectedSeats.push(seatId);
             }
-
             updateBar();
         }
 
         function updateBar() {
             const bar = document.getElementById('checkoutBar');
-            const hiddenInput = document.getElementById('selectedSeatIds');
-            const infoText = document.getElementById('selectionInfo');
-            const priceDisplay = document.getElementById('totalPrice');
-
-            if (selectedSeats.length > 0) {
-                bar.style.display = 'flex';
-                hiddenInput.value = selectedSeats.join(',');
-                infoText.innerText = selectedSeats.length + (selectedSeats.length === 1 ? " Platz" : " Plätze") + " gewählt";
-                priceDisplay.innerText = (selectedSeats.length * ticketPrice).toFixed(2);
-            } else {
-                bar.style.display = 'none';
-            }
+            document.getElementById('selectedSeatIds').value = selectedSeats.join(',');
+            document.getElementById('selectionInfo').innerText = selectedSeats.length + " Plätze gewählt";
+            document.getElementById('totalPrice').innerText = (selectedSeats.length * ticketPrice).toFixed(2);
+            bar.style.display = selectedSeats.length > 0 ? 'flex' : 'none';
         }
     </script>
-
 </body>
 </html>
