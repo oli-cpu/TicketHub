@@ -25,7 +25,7 @@ if (isset($_POST['checkout']) && !empty($_SESSION['cart'])) {
 
         $sqlTicket = "INSERT INTO tblticket (fkBestellung, fkUser, fkEvent, fkSeat, fldEndpreis) VALUES (?, ?, ?, ?, ?)";
         $stmtT = $pdo->prepare($sqlTicket);
-        
+
         $sqlUpdateSeat = "UPDATE tblseat SET fldStatus = 'besetzt' WHERE pkSeat = ?";
         $stmtU = $pdo->prepare($sqlUpdateSeat);
 
@@ -35,7 +35,7 @@ if (isset($_POST['checkout']) && !empty($_SESSION['cart'])) {
         }
 
         $pdo->commit();
-        $_SESSION['cart'] = []; 
+        $_SESSION['cart'] = [];
         $message = "Bestellung erfolgreich abgeschlossen!";
     } catch (Exception $e) {
         $pdo->rollBack();
@@ -51,20 +51,20 @@ if (isset($_POST['checkout']) && !empty($_SESSION['cart'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Warenkorb - TicketHub</title>
     <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            background: #000; 
-            color: #fff; 
-            padding: 40px 20px; 
+        body {
+            font-family: Arial, sans-serif;
+            background: #000;
+            color: #fff;
+            padding: 40px 20px;
             margin: 0;
         }
 
-        .container { 
-            background: #121212; 
-            padding: 40px; 
-            border-radius: 8px; 
-            box-shadow: 0 10px 40px rgba(0,0,0,0.8); 
-            max-width: 800px; 
+        .container {
+            background: #121212;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+            max-width: 800px;
             margin: auto;
             border: 1px solid #222;
         }
@@ -96,40 +96,40 @@ if (isset($_POST['checkout']) && !empty($_SESSION['cart'])) {
         .price-col { font-weight: bold; font-size: 1.1rem; text-align: right; }
 
         /* Summen-Bereich */
-        .total-row td { 
-            border-bottom: none; 
-            padding-top: 30px; 
-            font-size: 1.4rem; 
-            font-weight: bold; 
+        .total-row td {
+            border-bottom: none;
+            padding-top: 30px;
+            font-size: 1.4rem;
+            font-weight: bold;
         }
         .total-amount { color: #ff9900; text-align: right; }
 
         /* Buttons */
         .actions { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
-        
-        .btn { 
-            padding: 15px 30px; 
-            border-radius: 4px; 
-            cursor: pointer; 
-            text-decoration: none; 
-            font-weight: bold; 
-            font-size: 1rem; 
+
+        .btn {
+            padding: 15px 30px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1rem;
             border: none;
             transition: 0.3s;
         }
         .btn-order { background: #ff9900; color: #000; flex-grow: 1; margin-left: 20px; text-align: center; }
         .btn-order:hover { background: #e68a00; transform: translateY(-2px); }
-        
+
         .btn-back { background: transparent; color: #888; border: 1px solid #444; }
         .btn-back:hover { color: #fff; border-color: #fff; }
 
         /* Success Message */
-        .msg-box { 
-            background: rgba(255, 153, 0, 0.1); 
-            border: 1px solid #ff9900; 
-            color: #ff9900; 
-            padding: 20px; 
-            border-radius: 4px; 
+        .msg-box {
+            background: rgba(255, 153, 0, 0.1);
+            border: 1px solid #ff9900;
+            color: #ff9900;
+            padding: 20px;
+            border-radius: 4px;
             text-align: center;
             margin-bottom: 30px;
         }
@@ -141,7 +141,7 @@ if (isset($_POST['checkout']) && !empty($_SESSION['cart'])) {
     <div class="brand-header">
         Ticket<span class="highlight">Hub</span>
     </div>
-    
+
     <?php if ($message): ?>
         <div class="msg-box">
             <h3><?= htmlspecialchars($message) ?></h3>
@@ -157,7 +157,7 @@ if (isset($_POST['checkout']) && !empty($_SESSION['cart'])) {
         </div>
     <?php else: ?>
         <h1>Dein Warenkorb</h1>
-        
+
         <table>
             <thead>
                 <tr>
@@ -166,9 +166,9 @@ if (isset($_POST['checkout']) && !empty($_SESSION['cart'])) {
                 </tr>
             </thead>
             <tbody>
-                <?php 
+                <?php
                 $grandTotal = 0;
-                foreach ($_SESSION['cart'] as $item): 
+                foreach ($_SESSION['cart'] as $item):
                     $grandTotal += $item['price'];
                 ?>
                 <tr>
@@ -179,7 +179,7 @@ if (isset($_POST['checkout']) && !empty($_SESSION['cart'])) {
                     <td class="price-col">CHF <?= number_format($item['price'], 2) ?></td>
                 </tr>
                 <?php endforeach; ?>
-                
+
                 <tr class="total-row">
                     <td>Gesamtsumme</td>
                     <td class="total-amount">CHF <?= number_format($grandTotal, 2) ?></td>

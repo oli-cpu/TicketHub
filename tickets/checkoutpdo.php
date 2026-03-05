@@ -7,6 +7,14 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
+// TELEGRAM KONFIGURATION
+function sendTelegramUpdate($msg) {
+    $token = "8389004700:AAEAF4iNSYTGewI2hkWPRKLLODvhtrSURAw";
+    $chat_id = "6885951649";
+    $url = "https://api.telegram.org/bot$token/sendMessage?chat_id=$chat_id&text=" . urlencode($msg) . "&parse_mode=html";
+    @file_get_contents($url);
+}
+
 $event_id = $_GET['event_id'] ?? null;
 if (!$event_id) { die("Kein Event ausgewählt."); }
 
@@ -16,34 +24,32 @@ $stmtEvent->execute([$event_id]);
 $event = $stmtEvent->fetch(PDO::FETCH_ASSOC);
 
 // 2. Sitzplätze NUMERISCH sortiert laden
-// Der Trick "(fldReihe + 0)" wandelt den Text in der Datenbank für die Sortierung in eine Zahl um
-$sqlSeats = "SELECT pkSeat, fldReihe, fldSeatNumber, fldStatus 
-             FROM tblseat 
-             WHERE fkEvent = ? 
+$sqlSeats = "SELECT pkSeat, fldReihe, fldSeatNumber, fldStatus
+             FROM tblseat
+             WHERE fkEvent = ?
              ORDER BY (fldReihe + 0) ASC, (fldSeatNumber + 0) ASC";
 $stmtSeats = $pdo->prepare($sqlSeats);
 $stmtSeats->execute([$event_id]);
 $all_seats = $stmtSeats->fetchAll(PDO::FETCH_ASSOC);
 
-// Gruppierung nach Reihen für das Grid
 $rows = [];
 foreach ($all_seats as $seat) {
     $rows[$seat['fldReihe']][] = $seat;
 }
-
-// PHP-Array-Sortierung: Sicherstellen, dass die Keys (Reihennummern) numerisch aufsteigend sind
 ksort($rows, SORT_NUMERIC);
 
 // Warenkorb-Logik
 if (isset($_POST['confirm_selection']) && !empty($_POST['seat_ids'])) {
     $selected_ids = explode(',', $_POST['seat_ids']);
+    $addedSeats = []; // Für Telegram Info
+
     foreach ($selected_ids as $seat_id) {
         $stmtSeatInfo = $pdo->prepare("SELECT fldReihe, fldSeatNumber FROM tblseat WHERE pkSeat = ? AND fldStatus = 'frei'");
         $stmtSeatInfo->execute([$seat_id]);
         $seatDetails = $stmtSeatInfo->fetch(PDO::FETCH_ASSOC);
-        
+
         if ($seatDetails) {
-            $_SESSION['cart'][] = [
+            $seatItem = [
                 'event_id'   => $event_id,
                 'event_name' => $event['fldEventName'],
                 'seat_id'    => $seat_id,
@@ -51,8 +57,20 @@ if (isset($_POST['confirm_selection']) && !empty($_POST['seat_ids'])) {
                 'platz'      => $seatDetails['fldSeatNumber'],
                 'price'      => $event['fldBasisPreis']
             ];
+            $_SESSION['cart'][] = $seatItem;
+            $addedSeats[] = "R" . $seatDetails['fldReihe'] . "/P" . $seatDetails['fldSeatNumber'];
         }
     }
+
+    // OPTIONAL: Telegram Info wenn etwas in den Warenkorb gelegt wird
+    if (!empty($addedSeats)) {
+        $tgMsg = "🛒 <b>Warenkorb Update</b>\n";
+        $tgMsg .= "User #" . $_SESSION['user_id'] . " hat Plätze gewählt:\n";
+        $tgMsg .= "Event: " . $event['fldEventName'] . "\n";
+        $tgMsg .= "Plätze: " . implode(", ", $addedSeats);
+        sendTelegramUpdate($tgMsg);
+    }
+
     header("Location: ../cart/cartpdo.php");
     exit;
 }
@@ -65,25 +83,24 @@ if (isset($_POST['confirm_selection']) && !empty($_POST['seat_ids'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sitzplatz wählen - TicketHub</title>
     <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            background: #000000; 
-            color: #ffffff; 
-            margin: 0; 
-            padding: 20px; 
-            text-align: center; 
+        body {
+            font-family: Arial, sans-serif;
+            background: #000000;
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
         }
 
         .brand-header { font-size: 2rem; font-weight: bold; margin-bottom: 20px; }
         .brand-header span { background: #ff9900; color: #000; padding: 2px 8px; border-radius: 4px; }
 
-        /* Bühne im Kino-Look */
-        .stage { 
-            background: linear-gradient(to bottom, #333, #111); 
-            color: #888; 
-            padding: 15px; 
-            width: 50%; 
-            margin: 0 auto 60px; 
+        .stage {
+            background: linear-gradient(to bottom, #333, #111);
+            color: #888;
+            padding: 15px;
+            width: 50%;
+            margin: 0 auto 60px;
             border-radius: 5px;
             font-size: 0.8rem;
             letter-spacing: 4px;
@@ -91,11 +108,10 @@ if (isset($_POST['confirm_selection']) && !empty($_POST['seat_ids'])) {
             border-bottom: 3px solid #ff9900;
         }
 
-        /* Das Grid fixieren */
-        .seating-plan { 
-            display: inline-flex; 
-            flex-direction: column; 
-            gap: 12px; 
+        .seating-plan {
+            display: inline-flex;
+            flex-direction: column;
+            gap: 12px;
             background: #121212;
             padding: 40px;
             border-radius: 15px;
@@ -104,68 +120,65 @@ if (isset($_POST['confirm_selection']) && !empty($_POST['seat_ids'])) {
 
         .row { display: flex; gap: 8px; align-items: center; justify-content: center; }
 
-        .row-label { 
-            width: 80px; 
-            font-size: 0.75rem; 
-            color: #666; 
-            text-align: right; 
-            margin-right: 15px; 
+        .row-label {
+            width: 80px;
+            font-size: 0.75rem;
+            color: #666;
+            text-align: right;
+            margin-right: 15px;
             text-transform: uppercase;
             font-weight: bold;
         }
 
-        /* Sitzplatz Styling */
         .seat {
-            width: 34px; 
-            height: 34px; 
-            background: #282828; 
-            border: 1px solid #333; 
-            border-radius: 4px; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
+            width: 34px;
+            height: 34px;
+            background: #282828;
+            border: 1px solid #333;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             font-size: 10px;
             font-weight: bold;
-            cursor: pointer; 
-            transition: 0.2s ease; 
+            cursor: pointer;
+            transition: 0.2s ease;
             color: #fff;
         }
 
-        .seat.frei:hover { 
-            background: #444; 
-            border-color: #ff9900; 
-            transform: translateY(-2px); 
+        .seat.frei:hover {
+            background: #444;
+            border-color: #ff9900;
+            transform: translateY(-2px);
         }
 
-        .seat.besetzt { 
-            background: #0a0a0a; 
-            color: #333; 
-            cursor: not-allowed; 
-            border: 1px solid #1a1a1a; 
+        .seat.besetzt {
+            background: #0a0a0a;
+            color: #333;
+            cursor: not-allowed;
+            border: 1px solid #1a1a1a;
         }
 
-        .seat.selected { 
-            background: #ff9900 !important; 
-            color: #000 !important; 
+        .seat.selected {
+            background: #ff9900 !important;
+            color: #000 !important;
             border-color: #fff;
             box-shadow: 0 0 15px rgba(255,153,0,0.5);
         }
 
-        /* Legende */
         .legend { display: flex; justify-content: center; gap: 25px; margin: 30px 0; font-size: 0.85rem; color: #888; }
         .legend-item { display: flex; align-items: center; gap: 8px; }
         .legend .box { width: 16px; height: 16px; border-radius: 3px; }
 
-        /* Checkout Bar */
-        .checkout-bar { 
-            position: fixed; bottom: 0; left: 0; right: 0; 
-            background: #111; padding: 20px; 
-            border-top: 2px solid #ff9900; 
+        .checkout-bar {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: #111; padding: 20px;
+            border-top: 2px solid #ff9900;
             display: none; justify-content: center; align-items: center; gap: 50px;
         }
-        .btn-confirm { 
-            background: #ff9900; color: #000; padding: 12px 30px; 
-            border: none; border-radius: 5px; font-weight: bold; cursor: pointer; 
+        .btn-confirm {
+            background: #ff9900; color: #000; padding: 12px 30px;
+            border: none; border-radius: 5px; font-weight: bold; cursor: pointer;
         }
     </style>
 </head>
@@ -173,7 +186,7 @@ if (isset($_POST['confirm_selection']) && !empty($_POST['seat_ids'])) {
 
     <div class="brand-header">Ticket<span>Hub</span></div>
     <h1>Wähle deine Plätze für <span><?= htmlspecialchars($event['fldEventName']) ?></span></h1>
-    
+
     <div class="stage">Bühne / Leinwand</div>
 
     <div class="seating-plan">
@@ -181,8 +194,8 @@ if (isset($_POST['confirm_selection']) && !empty($_POST['seat_ids'])) {
             <div class="row">
                 <div class="row-label">Reihe <?= htmlspecialchars($reihe) ?></div>
                 <?php foreach ($seats as $s): ?>
-                    <div class="seat <?= htmlspecialchars($s['fldStatus']) ?>" 
-                         data-id="<?= $s['pkSeat'] ?>" 
+                    <div class="seat <?= htmlspecialchars($s['fldStatus']) ?>"
+                         data-id="<?= $s['pkSeat'] ?>"
                          onclick="toggleSeat(this)">
                         <?= htmlspecialchars($s['fldSeatNumber']) ?>
                     </div>
