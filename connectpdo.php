@@ -1,7 +1,7 @@
 <?php
 $servername = 'localhost';
 $username = 'root';
-$passwort = '';
+$passwort = 'Passwort123.';
 $db = 'tickethub';
 
 try {
