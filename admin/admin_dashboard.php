@@ -11,9 +11,7 @@ if (isset($_GET['delete_id'])) {
     $delId = $_GET['delete_id'];
     try {
         $pdo->beginTransaction();
-        // Zuerst abhängige Sitze löschen (Referenzielle Integrität)
         $pdo->prepare("DELETE FROM tblseat WHERE fkEvent = ?")->execute([$delId]);
-        // Dann das Event löschen
         $pdo->prepare("DELETE FROM tblevent WHERE pkEvent = ?")->execute([$delId]);
         $pdo->commit();
         header("Location: admin_dashboard.php?msg=deleted");
@@ -35,60 +33,65 @@ try {
 <html lang="de">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - TicketHub</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; padding: 30px; background: #f4f7f6; }
-        .container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
-        th { background: #007bff; color: white; }
-        .btn { padding: 6px 12px; border-radius: 4px; text-decoration: none; font-size: 13px; color: white; display: inline-block; margin-right: 5px; }
-        .btn-edit { background: #ffc107; color: #333; }
-        .btn-delete { background: #dc3545; }
-        .btn-add { background: #28a745; margin-bottom: 20px; font-weight: bold; }
-        .msg { padding: 10px; background: #d4edda; color: #155724; border-radius: 5px; margin-bottom: 15px; }
-    </style>
-</head>
-<body>
+        /* Globaler Dark Look */
+        body { 
+            font-family: Arial, sans-serif; 
+            background: #000; 
+            color: #fff; 
+            margin: 0; 
+            padding: 40px; 
+        }
 
-<div class="container">
-    <h2>Event Management</h2>
-    
-    <?php if(isset($_GET['msg']) && $_GET['msg'] == 'deleted'): ?>
-        <div class="msg">Event erfolgreich gelöscht.</div>
-    <?php endif; ?>
+        .container { 
+            max-width: 1100px; 
+            margin: auto; 
+            background: #121212; 
+            padding: 30px; 
+            border-radius: 8px; 
+            border: 1px solid #222;
+        }
 
-    <a href="add_event.php" class="btn btn-add">+ Neues Event anlegen</a>
-    <a href="../index.php" class="btn" style="background: #6c757d;">Zurück zum Shop</a>
+        /* Branding */
+        .brand-header {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .brand-header span.highlight {
+            background: #ff9900;
+            color: #000;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
 
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Event Name</th>
-                <th>Datum</th>
-                <th>Preis</th>
-                <th>Aktionen</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php foreach ($events as $e): ?>
-            <tr>
-                <td><?= $e['pkEvent'] ?></td>
-                <td><strong><?= htmlspecialchars($e['fldEventName']) ?></strong></td>
-                <td><?= date("d.m.Y H:i", strtotime($e['fldEventDatum'])) ?></td>
-                <td>CHF <?= number_format($e['fldBasisPreis'], 2) ?></td>
-                <td>
-                    <a href="edit_event.php?id=<?= $e['pkEvent'] ?>" class="btn btn-edit">✏️ Ändern</a>
-                    <a href="admin_dashboard.php?delete_id=<?= $e['pkEvent'] ?>" 
-                       class="btn btn-delete" 
-                       onclick="return confirm('Sicher löschen? Alle zugehörigen Sitzplätze werden ebenfalls entfernt!')">🗑️ Löschen</a>
-                </td>
-            </tr>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
-</div>
+        /* Toolbar */
+        .toolbar { margin-bottom: 30px; display: flex; gap: 10px; }
 
-</body>
-</html>
+        /* Buttons */
+        .btn { 
+            padding: 10px 16px; 
+            border-radius: 4px; 
+            text-decoration: none; 
+            font-size: 14px; 
+            font-weight: bold; 
+            transition: 0.2s; 
+            display: inline-block;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-add { background: #ff9900; color: #000; }
+        .btn-add:hover { background: #e68a00; }
+        
+        .btn-secondary { background: transparent; color: #888; border: 1px solid #444; }
+        .btn-secondary:hover { color: #fff; border-color: #fff; }
+
+        .btn-edit { background: #333; color: #ff9900; border: 1px solid #ff9900; font-size: 12px; }
+        .btn-edit:hover { background: #ff9900; color: #000; }
+
+        .btn-delete { background: transparent; color: #ff4444; border: 1px

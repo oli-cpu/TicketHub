@@ -2,7 +2,6 @@
 session_start();
 require_once '../connectpdo.php';
 
-// Prüfung: Ist der User eingeloggt?
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../auth/loginpdo.php");
     exit;
@@ -10,12 +9,6 @@ if (!isset($_SESSION['user_id'])) {
 
 $user_id = $_SESSION['user_id'];
 
-// FEHLER-DIAGNOSE (Nur zum Testen):
-// $check = $pdo->query("SELECT COUNT(*) FROM tblticket WHERE fkUser = $user_id")->fetchColumn();
-// echo "Anzahl Tickets in DB für dich: " . $check;
-
-// SQL: Gekaufte Tickets abrufen
-// WICHTIG: Prüfe, ob die Spaltennamen pkTicketID oder pkTicket heißen!
 $sql = "SELECT 
             t.pkTicket, 
             e.fldEventName, 
@@ -45,43 +38,140 @@ try {
 <html lang="de">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meine Tickets - TicketHub</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 30px; }
-        .container { max-width: 800px; margin: auto; }
-        .ticket-card { 
-            background: white; border-radius: 12px; padding: 20px; margin-bottom: 15px; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-left: 5px solid #28a745;
-            display: flex; justify-content: space-between; align-items: center;
+        /* Globaler Dark Look */
+        body { 
+            font-family: Arial, sans-serif; 
+            background: #000000; 
+            color: #ffffff; 
+            margin: 0; 
+            padding: 40px; 
         }
-        .empty { text-align: center; padding: 50px; background: white; border-radius: 12px; }
-        .btn-back { text-decoration: none; color: #007bff; font-weight: bold; margin-bottom: 20px; display: inline-block; }
+
+        .container { max-width: 900px; margin: auto; }
+
+        /* Branding */
+        .brand-header {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 30px;
+            letter-spacing: -1px;
+        }
+        .brand-header span.highlight {
+            background: #ff9900;
+            color: #000;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-left: 4px;
+        }
+
+        /* Ticket-Card Design */
+        .ticket-card { 
+            background: #121212; 
+            border-radius: 8px; 
+            padding: 25px; 
+            margin-bottom: 20px; 
+            border: 1px solid #222;
+            border-left: 6px solid #ff9900; /* Der ikonische Akzent */
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            transition: transform 0.2s;
+        }
+        
+        .ticket-card:hover {
+            transform: scale(1.01);
+            background: #181818;
+        }
+
+        .ticket-info h3 { 
+            margin: 0 0 10px 0; 
+            font-size: 1.4rem; 
+            color: #ff9900;
+        }
+
+        .details { 
+            color: #bbb; 
+            font-size: 0.95rem; 
+            line-height: 1.6;
+        }
+
+        .details span { color: #fff; font-weight: bold; }
+
+        .ticket-meta { text-align: right; }
+
+        .price { 
+            font-size: 1.5rem; 
+            font-weight: bold; 
+            margin-bottom: 5px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: rgba(255, 153, 0, 0.1);
+            color: #ff9900;
+            border: 1px solid #ff9900;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        /* Empty State */
+        .empty { 
+            text-align: center; 
+            padding: 60px; 
+            background: #121212; 
+            border-radius: 8px; 
+            border: 1px dashed #444;
+        }
+
+        .btn-back { 
+            text-decoration: none; 
+            color: #ff9900; 
+            font-weight: bold; 
+            display: inline-block; 
+            margin-bottom: 25px;
+            font-size: 0.9rem;
+        }
+
+        .btn-back:hover { text-decoration: underline; }
+
     </style>
 </head>
 <body>
 
 <div class="container">
+    <div class="brand-header">
+        Ticket<span class="highlight">Hub</span>
+    </div>
+
     <a href="../index.php" class="btn-back">← Zurück zum Shop</a>
-    <h2>Deine gekauften Tickets</h2>
+    
+    <h2 style="margin-bottom: 30px;">Deine Tickets</h2>
 
     <?php if (empty($tickets)): ?>
         <div class="empty">
-            <p>Du hast noch keine Tickets in deinem Konto.</p>
-            <p><small>(Überprüfe, ob du in der <strong>cartpdo.php</strong> auf 'Bestellen' geklickt hast!)</small></p>
+            <p style="font-size: 1.2rem; color: #888;">Du hast noch keine Tickets erworben.</p>
+            <p><small style="color: #555;">Besuche den Shop, um aktuelle Events zu finden.</small></p>
         </div>
     <?php else: ?>
         <?php foreach ($tickets as $t): ?>
             <div class="ticket-card">
-                <div>
-                    <div style="font-size: 18px; font-weight: bold;"><?= htmlspecialchars($t['fldEventName']) ?></div>
-                    <div style="color: #666; font-size: 14px;">
-                        📅 <?= date("d.m.Y H:i", strtotime($t['fldEventDatum'])) ?> Uhr<br>
-                        💺 Reihe <?= htmlspecialchars($t['fldReihe']) ?>, Platz <?= htmlspecialchars($t['fldSeatNumber']) ?>
+                <div class="ticket-info">
+                    <h3><?= htmlspecialchars($t['fldEventName']) ?></h3>
+                    <div class="details">
+                        Datum: <span><?= date("d.m.Y - H:i", strtotime($t['fldEventDatum'])) ?> Uhr</span><br>
+                        Location: <span>Zentralarena</span><br> Platz: <span>Reihe <?= htmlspecialchars($t['fldReihe']) ?>, Sitz <?= htmlspecialchars($t['fldSeatNumber']) ?></span>
                     </div>
                 </div>
-                <div style="text-align: right;">
-                    <div style="font-weight: bold;">CHF <?= number_format($t['fldEndpreis'], 2) ?></div>
-                    <div style="font-size: 12px; color: #28a745;">Status: <?= htmlspecialchars($t['fldStatus']) ?></div>
+                
+                <div class="ticket-meta">
+                    <div class="price">CHF <?= number_format($t['fldEndpreis'], 2) ?></div>
+                    <div class="status-badge"><?= htmlspecialchars($t['fldStatus']) ?></div>
                 </div>
             </div>
         <?php endforeach; ?>

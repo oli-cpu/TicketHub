@@ -2,10 +2,8 @@
 session_start();
 require_once 'connectpdo.php';
 
-// Login-Status für JavaScript-Check
 $isLoggedIn = isset($_SESSION['user_id']) ? 'true' : 'false';
 
-// SQL: Events mit Joins laden (fld-Präfixe laut deinem Modell)
 $sql = "SELECT 
             e.pkEvent, e.fldEventName, e.fldEventDatum, e.fldBasisPreis, 
             a.fldArtistName, o.fldOrtName
@@ -26,54 +24,121 @@ try {
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>TicketHub - Startseite</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TicketHub - Premium Events</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
-        
-        /* Header & Navigation */
-        .header { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 15px 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .nav-right { display: flex; align-items: center; gap: 15px; }
+        /* Globales Styling im Dark-Mode */
+        body { 
+            font-family: Arial, sans-serif; 
+            background: #000000; 
+            color: #ffffff; 
+            margin: 0; 
+            padding: 20px; 
+        }
 
-        /* Profil-Bento Style */
+        /* Das Logo-Design */
+        .brand {
+            font-size: 2.2rem;
+            font-weight: bold;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            letter-spacing: -1px;
+        }
+        .brand .text-white { color: #ffffff; }
+        .brand .highlight { 
+            background: #ff9900; 
+            color: #000000; 
+            padding: 2px 6px; 
+            border-radius: 4px; 
+            margin-left: 2px;
+        }
+
+        /* Header & Navigation */
+        .header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            background: #121212; 
+            padding: 10px 40px; 
+            border-bottom: 1px solid #333;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .nav-right { display: flex; align-items: center; gap: 20px; }
+
+        /* Buttons */
+        .btn { 
+            padding: 10px 18px; 
+            border-radius: 4px; 
+            text-decoration: none; 
+            font-size: 14px; 
+            font-weight: bold;
+            cursor: pointer; 
+            border: none; 
+            transition: 0.2s ease;
+        }
+        .btn-buy { background: #ff9900; color: #000; }
+        .btn-buy:hover { background: #e68a00; }
+        .btn-outline { border: 1px solid #ff9900; color: #ff9900; background: transparent; }
+        .btn-outline:hover { background: #ff9900; color: #000; }
+
+        /* Bento Dropdown */
         .profile-menu { position: relative; }
         .profile-trigger { 
-            background: #007bff; color: white; padding: 10px 20px; border-radius: 30px; 
-            cursor: pointer; font-weight: 600; transition: 0.3s; border: none;
+            background: #282828; 
+            color: #fff; 
+            padding: 8px 15px; 
+            border-radius: 4px; 
+            border: 1px solid #444;
+            cursor: pointer; 
         }
-        .profile-trigger:hover { background: #0056b3; }
 
         .bento-dropdown { 
-            display: none; position: absolute; right: 0; top: 50px; width: 240px; 
-            background: white; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); 
-            z-index: 1000; padding: 12px; 
+            display: none; 
+            position: absolute; 
+            right: 0; 
+            top: 45px; 
+            width: 220px; 
+            background: #1b1b1b; 
+            border: 1px solid #333;
+            border-radius: 8px; 
+            padding: 10px; 
+            z-index: 1001; 
         }
-        .bento-dropdown.active { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .bento-dropdown.active { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         
         .bento-item { 
-            background: #f8f9fa; padding: 15px; text-align: center; text-decoration: none; color: #333; 
-            font-size: 13px; border-radius: 12px; transition: 0.2s; display: flex; flex-direction: column; align-items: center; gap: 8px;
+            background: #282828; 
+            padding: 12px; 
+            text-align: center; 
+            text-decoration: none; 
+            color: #fff; 
+            font-size: 12px; 
+            border-radius: 4px; 
         }
-        .bento-item:hover { background: #e9ecef; transform: translateY(-2px); }
+        .bento-item:hover { background: #333; border: 1px solid #ff9900; }
         .bento-item.full { grid-column: span 2; }
-        .bento-item.logout { color: #dc3545; background: #fff1f0; font-weight: bold; }
+        .bento-item.logout { color: #ff9900; }
 
-        /* Tabelle */
-        table { width: 100%; border-collapse: collapse; margin-top: 30px; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #eee; }
-        th { background: #007bff; color: white; font-weight: 500; }
-        .btn { padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 14px; cursor: pointer; border: none; }
-        .btn-buy { background: #28a745; color: white; font-weight: bold; }
-        .cart-btn { background: #ffc107; color: #333; font-weight: bold; }
+        /* Tabelle im modernen Dark-Look */
+        .table-container { width: 100%; max-width: 1200px; margin: 40px auto; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; background: #121212; border-radius: 8px; overflow: hidden; }
+        th { background: #1b1b1b; color: #ff9900; padding: 18px; text-align: left; font-size: 13px; text-transform: uppercase; }
+        td { padding: 18px; border-bottom: 1px solid #222; font-size: 15px; }
+        tr:hover { background: #181818; }
+        
+        strong { color: #ff9900; }
+
     </style>
 
     <script>
-        // Bento Menu Umschalter
         function toggleBento() {
-            var menu = document.getElementById("bentoMenu");
-            menu.classList.toggle("active");
+            document.getElementById("bentoMenu").classList.toggle("active");
         }
 
-        // Schließen wenn man außerhalb klickt
         window.onclick = function(event) {
             if (!event.target.closest('.profile-menu')) {
                 var menu = document.getElementById("bentoMenu");
@@ -98,58 +163,63 @@ try {
 <body>
 
 <div class="header">
-    <h1>TicketHub</h1>
+    <a href="#" class="brand">
+        <span class="text-white">Ticket</span><span class="highlight">Hub</span>
+    </a>
+    
     <div class="nav-right">
-        <a href="cart/cartpdo.php" class="btn cart-btn">🛒 Warenkorb (<?= isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0 ?>)</a>
+        <a href="cart/cartpdo.php" class="btn btn-outline">Warenkorb (<?= isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0 ?>)</a>
 
         <?php if (isset($_SESSION['user_id'])): ?>
             <div class="profile-menu">
                 <button class="profile-trigger" onclick="toggleBento()">
-                    👤 Mein Konto ▾
+                    Mein Konto ▾
                 </button>
                 <div class="bento-dropdown" id="bentoMenu">
-                    <a href="user/profile.php" class="bento-item">⚙️<br>Profil</a>
-                    <a href="user/orders.php" class="bento-item">🎟️<br>Tickets</a>
+                    <a href="user/profile.php" class="bento-item">Profil</a>
+                    <a href="user/orders.php" class="bento-item">Tickets</a>
                     
                     <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
-                        <a href="admin/admin_dashboard.php" class="bento-item full" style="background: #e7f3ff; color: #007bff; font-weight: bold;">🛠️ Admin Panel</a>
+                        <a href="admin/admin_dashboard.php" class="bento-item full" style="color: #ff9900;">Admin Panel</a>
                     <?php endif; ?>
                     
-                    <a href="auth/logoutpdo.php" class="bento-item full logout">🚪 Abmelden</a>
+                    <a href="auth/logoutpdo.php" class="bento-item full logout">Abmelden</a>
                 </div>
             </div>
         <?php else: ?>
-            <a href="auth/loginpdo.php" class="btn" style="background: #007bff; color: white; font-weight: bold;">Anmelden</a>
+            <a href="auth/loginpdo.php" class="btn btn-buy">Anmelden</a>
         <?php endif; ?>
     </div>
 </div>
 
-<table>
-    <thead>
-        <tr>
-            <th>Event</th>
-            <th>Artist</th>
-            <th>Ort</th>
-            <th>Datum</th>
-            <th>Preis</th>
-            <th>Aktion</th>
-        </tr>
-    </thead>
-    <tbody>
-    <?php while ($row = $stmt->fetch(PDO::FETCH_ASSOC)): ?>
-        <tr>
-            <td><strong><?= htmlspecialchars($row['fldEventName']) ?></strong></td>
-            <td><?= htmlspecialchars($row['fldArtistName'] ?? 'TBA') ?></td>
-            <td><?= htmlspecialchars($row['fldOrtName'] ?? 'TBA') ?></td>
-            <td><?= date("d.m.Y H:i", strtotime($row['fldEventDatum'])) ?></td>
-            <td>CHF <?= number_format($row['fldBasisPreis'], 2) ?></td>
-            <td>
-                <a href="tickets/checkoutpdo.php?event_id=<?= $row['pkEvent'] ?>" class="btn btn-buy" onclick="return checkLogin(event)">🎟️ Ticket kaufen</a>
-            </td>
-        </tr>
-    <?php endwhile; ?>
-    </tbody>
-</table>
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>Event</th>
+                <th>Artist</th>
+                <th>Ort</th>
+                <th>Datum</th>
+                <th>Preis</th>
+                <th>Aktion</th>
+            </tr>
+        </thead>
+        <tbody>
+        <?php while ($row = $stmt->fetch(PDO::FETCH_ASSOC)): ?>
+            <tr>
+                <td><strong><?= htmlspecialchars($row['fldEventName']) ?></strong></td>
+                <td><?= htmlspecialchars($row['fldArtistName'] ?? 'TBA') ?></td>
+                <td><?= htmlspecialchars($row['fldOrtName'] ?? 'TBA') ?></td>
+                <td><?= date("d.m.Y H:i", strtotime($row['fldEventDatum'])) ?></td>
+                <td>CHF <?= number_format($row['fldBasisPreis'], 2) ?></td>
+                <td>
+                    <a href="tickets/checkoutpdo.php?event_id=<?= $row['pkEvent'] ?>" class="btn btn-buy" onclick="return checkLogin(event)">Ticket kaufen</a>
+                </td>
+            </tr>
+        <?php endwhile; ?>
+        </tbody>
+    </table>
+</div>
 
 </body>
 </html>
